@@ -1,9 +1,15 @@
 import os
 import logging
-import asyncio
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import (
+    Application, 
+    CommandHandler, 
+    MessageHandler, 
+    filters, 
+    ContextTypes,
+    CallbackQueryHandler  # <-- THIS WAS MISSING!
+)
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -135,11 +141,9 @@ No data storage. No tracking. Just pure assistance!"""
 # --- Command Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a welcome message when /start is issued."""
-    user = update.effective_user
     keyboard = [
         [InlineKeyboardButton("📋 Commands", callback_data='help'),
-         InlineKeyboardButton("ℹ️ About", callback_data='about')],
-        [InlineKeyboardButton("📢 Channel", url='https://t.me/your_channel')]
+         InlineKeyboardButton("ℹ️ About", callback_data='about')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -176,16 +180,16 @@ async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(feedback_text, parse_mode='Markdown')
 
-# --- Message Handler (AI-like responses) ---
+# --- Message Handler ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle regular text messages."""
     user_message = update.message.text
     user_id = update.effective_user.id
     
-    # Store user's last message (optional)
+    # Store user's last message
     user_data[user_id] = {'last_message': user_message, 'timestamp': datetime.now()}
     
-    # Generate response based on user input
+    # Generate response
     response = generate_response(user_message)
     
     await update.message.reply_text(response, parse_mode='Markdown')
@@ -194,7 +198,6 @@ def generate_response(message):
     """Generate a response based on user input."""
     message_lower = message.lower()
     
-    # Smart responses
     if any(word in message_lower for word in ['hello', 'hi', 'hey', 'sup', 'yo']):
         return "👋 Hello there! How can I assist you today?"
     elif 'how are you' in message_lower:
@@ -247,10 +250,10 @@ def main():
     application.add_handler(CommandHandler("time", time_command))
     application.add_handler(CommandHandler("feedback", feedback_command))
     
-    # Add message handler for all text messages
+    # Add message handler
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    # Add callback query handler for buttons
+    # Add callback query handler
     application.add_handler(CallbackQueryHandler(button_callback))
     
     # Add error handler
